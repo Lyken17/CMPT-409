@@ -1,274 +1,239 @@
 #include <iostream>
-#include <sstream>
-#include <fstream>
-#include <string>
 #include <vector>
-#include <queue>
-#include <map>
-#include <set>
-#include <stack>
-#include <assert.h>
+#include <sstream>
+#include <cmath>
 #include <algorithm>
-#include <math.h>
-#include <ctime>
 #include <functional>
-#include <string.h>
-#include <stdio.h>
-#include <numeric>
-#include <float.h>
 
+#define DEBUG false
 using namespace std;
 
-struct Poker {
-    char suite;
+
+class card {
+public:
     int value;
+    char suit;
+    card(string in) : value(toValue(in[0])), suit(in[1]) {}
+    card(char v, char s) : value(toValue(v)), suit(s) {}
+
+    int toValue(char ch) {
+        if (ch > '0' && ch <= '9')
+            return int(ch - '0');
+        else
+            switch (ch) {
+                case 'T':
+                    return 10;
+                case 'J':
+                    return 11;
+                case 'Q':
+                    return 12;
+                case 'K':
+                    return 13;
+                case 'A':
+                    return 14;
+            }
+        return -1;
+    }
+
+    bool operator < (const card& rhs) { return (*this).value < rhs.value; }
+    bool operator <= (const card& rhs) { return (*this).value <= rhs.value; }
+    bool operator > (const card& rhs) { return (*this).value > rhs.value; }
+    bool operator >= (const card& rhs) { return (*this).value >= rhs.value; }
+    bool operator == (const card& rhs) { return (*this).value == rhs.value; }
 };
-bool operator<(Poker p1, Poker p2) {
-    return p1.value < p2.value;
+
+
+int normal(int value) {
+    if (value < 0) return -1;
+    if (value > 0) return 1;
+    return 0;
 }
 
-bool sameSuite(vector<Poker> v) {
-    for (int i = 1; i < v.size(); i++)
-        if (v[i].suite != v[0].suite) return false;
+int toValue(vector<card> &p1) {
+    int sum = 0;
+    int digit = 1;
+    for (int i = int(p1.size()) - 1; i >= 0; --i) {
+        sum += p1[i].value * digit;
+        digit *= 100;
+    }
+    return sum;
+}
+
+bool sameSuit(vector<card> &p1) {
+    for (int i = 1; i < 5; ++i)
+        if (p1[i].suit != p1[0].suit) return false;
     return true;
 }
 
-int maxPoker(vector<Poker> v1, vector<Poker> v2) {
-    for (int i = v1.size() - 1; i >= 0; i--) {
-        if (v1[i].value > v2[i].value) return -1;
-        else if (v1[i].value < v2[i].value) return 1;
+bool consecutiveValue(vector<card> &p1) {
+    for (int i = 1; i < 5; ++i)
+        if (p1[i-1].value - p1[i].value != 1) return false;
+    return true;
+}
+
+int compareHighCard(vector<card> &p1, vector<card> &p2) {
+    return normal(toValue(p1) - toValue(p2));
+}
+
+// Pair
+int onePair(vector<card> &p1) {
+    for (int i = 1; i < 5; ++i) {
+        if (p1[i-1].value == p1[i].value) {
+
+            int value = 0;
+            value += p1[i].value;
+
+            for (int j = 0; j < i -1; ++j) {
+                value *= 100;
+                value += p1[j].value;
+            }
+            for (int j = i+1; j < 5; ++j) {
+                value *= 100;
+                value += p1[j].value;
+            }
+            return value;
+        }
     }
-    
     return 0;
 }
 
-int f8(vector<Poker> v1, vector<Poker> v2) {
-    int i1 = -1, i2 = -1;
-    
-    if (sameSuite(v1)) {
-        if (v1[4].value - v1[0].value == 4) {
-            i1 = v1[4].value;
-        }
-    }
-    
-    if (sameSuite(v2)) {
-        if (v2[4].value - v2[0].value == 4) {
-            i2 = v2[4].value;
-        }
-    }
-    
-    if (i1 > i2) return -1;
-    else if (i1 < i2) return 1;
-    
-    
-    return 0;
+// two pairs
+int twoPairs(vector<card> &p1) {
+    if (p1[0].value == p1[1].value && p1[2].value == p1[3].value)
+        return p1[0].value * 10000 + p1[2].value * 100 + p1[4].value;
+    else if (p1[1].value == p1[2].value && p1[3].value == p1[4].value)
+        return p1[1].value * 10000 + p1[3].value * 100 + p1[0].value;
+    else
+        return 0;
 }
 
-int f7(vector<Poker> v1, vector<Poker> v2) {
-    int i1 = -1, i2 = -1;
-    
-    if (v1[3].value == v1[0].value) i1 = v1[3].value;
-    if (v2[3].value == v2[0].value) i2 = v2[3].value;
-    
-    if (i1 > i2) return -1;
-    else if (i1 < i2) return 1;
-    
-    return 0;
+// three of a king
+int threeOfAKing(vector<card> &p1) {
+    if ( (p1[0].value == p1[2].value) ||
+         (p1[1].value == p1[3].value) ||
+         (p1[2].value == p1[4].value) )
+        return p1[2].value;
+    else
+        return 0;
 }
 
-int f6(vector<Poker> v1, vector<Poker> v2) {
-    int i1 = -1, i2 = -1;
-    
-    if (v1[1].value == v1[0].value && v1[4].value == v1[2].value) i1 = v1[2].value;
-    if (v1[2].value == v1[0].value && v1[4].value == v1[3].value) i1 = v1[0].value;
-    
-    if (v2[1].value == v2[0].value && v2[4].value == v2[2].value) i2 = v2[2].value;
-    if (v2[2].value == v2[0].value && v2[4].value == v2[3].value) i2 = v2[0].value;
-    
-    if (i1 > i2) return -1;
-    else if (i1 < i2) return 1;
-    
-    return 0;
+// straight
+int straight(vector<card> &p1) {
+    if (consecutiveValue(p1)) return p1[0].value;
+    else return 0;
 }
 
-int f5(vector<Poker> v1, vector<Poker> v2) {
-    if (sameSuite(v1) && sameSuite(v2)) {
-        return maxPoker(v1, v2);
-    }
-    else if (sameSuite(v1)) return -1;
-    else if (sameSuite(v2)) return 1;
-    return 0;
+// cardFlush
+int cardFlush(vector<card> &p1) {
+    if (sameSuit(p1)) return toValue(p1);
+    else return 0;
 }
 
-int f4(vector<Poker> v1, vector<Poker> v2) {
-    int i1 = -1, i2 = -1;
-    
-    if (v1[4].value - v1[0].value == 4) i1 = v1[0].value;
-    if (v2[4].value - v2[0].value == 4) i2 = v2[0].value;
-    
-    if (i1 > i2) return -1;
-    else if (i1 < i2) return 1;
-    return 0;
+// full house
+int fullHouse(vector<card> &p1) {
+    if ( (p1[0].value == p1[1].value && p1[1].value == p1[2].value   && p1[3].value == p1[4].value) ||
+         (p1[2].value == p1[3].value && p1[3].value == p1[4].value   && p1[0].value == p1[1].value) )
+        return p1[2].value;
+    else
+        return 0;
 }
 
-int f3(vector<Poker> v1, vector<Poker> v2) {
-    int i1 = -1, i2 = -1;
-    
-    if (v1[2].value == v1[0].value) i1 = v1[0].value;
-    if (v1[2].value == v1[4].value) i1 = v1[2].value;
-    if (v2[2].value == v2[0].value) i2 = v2[0].value;
-    if (v2[2].value == v2[4].value) i2 = v2[2].value;
-    
-    if (i1 > i2) return -1;
-    else if (i1 < i2) return 1;
-    
-    return 0;
+// four of a king
+int fourOfAKing(vector<card> &p1) {
+    if ( (p1[0].value == p1[1].value && p1[0].value == p1[2].value && p1[0].value == p1[3].value) ||
+         (p1[4].value == p1[1].value && p1[4].value == p1[2].value && p1[4].value == p1[3].value))
+        return p1[2].value;
+    else
+        return 0;
 }
 
-int f2(vector<Poker> v1, vector<Poker> v2) {
-    int pos = 0;
-    vector<Poker> tv1, tv2, val1, val2;
-    
-    while (pos < v1.size()) {
-        if (pos == v1.size() - 1) {
-            tv1.push_back(v1[pos]); pos += 1;
-        }
-        else if (v1[pos].value != v1[pos + 1].value) {
-            tv1.push_back(v1[pos]); pos += 1;
-        }
-        else {
-            val1.push_back(v1[pos]);
-            pos += 2;
-        }
-    }
-    
-    pos = 0;
-    while (pos < v2.size()) {
-        if (pos == v2.size() - 1) {
-            tv2.push_back(v2[pos]); pos += 1;
-        }
-        else if (v2[pos].value != v2[pos + 1].value) {
-            tv2.push_back(v2[pos]); pos += 1;
-        }
-        else {
-            val2.push_back(v2[pos]);
-            pos += 2;
-        }
-    }
-    
-    int r = 0;
-    if (val1.size() == 2 && val2.size() == 2) {
-        r = maxPoker(val1, val2);
-        if (r == 0)
-            r = maxPoker(tv1, tv2);
-        return r;
-    }
-    else if (val1.size() == 2) {
-        return -1;
-    }
-    else if (val2.size() == 2) {
-        return 1;
-    }
-    
-    return 0;
+// straight cardFlush
+int straighFlush(vector<card> &p1) {
+    if (sameSuit(p1) && consecutiveValue(p1))
+        return p1[0].value;
+    else
+        return 0;
 }
 
-int f1(vector<Poker> v1, vector<Poker> v2) {
-    int pos = 0;
-    vector<Poker> tv1, tv2, val1, val2;
-    
-    while (pos < v1.size()) {
-        if (pos == v1.size() - 1) {
-            tv1.push_back(v1[pos]); pos += 1;
-        }
-        else if (v1[pos].value != v1[pos + 1].value) {
-            tv1.push_back(v1[pos]); pos += 1;
-        }
-        else {
-            val1.push_back(v1[pos]);
-            pos += 2;
-        }
-    }
-    
-    pos = 0;
-    while (pos < v2.size()) {
-        if (pos == v2.size() - 1) {
-            tv2.push_back(v2[pos]); pos += 1;
-        }
-        else if (v2[pos].value != v2[pos + 1].value) {
-            tv2.push_back(v2[pos]); pos += 1;
-        }
-        else {
-            val2.push_back(v2[pos]);
-            pos += 2;
-        }
-    }
-    
-    int r = 0;
-    if (val1.size() == 1 && val2.size() == 1) {
-        r = maxPoker(val1, val2);
-        if (r == 0)
-            r = maxPoker(tv1, tv2);
-        return r;
-    }
-    else if (val1.size() == 1) {
-        return -1;
-    }
-    else if (val2.size() == 1) {
-        return 1;
-    }
-    
-    return 0;
+int elegantCompare(vector<card> &p1, vector<card> &p2) {
+
+    vector<function<int(vector<card> &)>> f_compare = {straighFlush, fourOfAKing, fullHouse, cardFlush, straight, threeOfAKing, twoPairs, onePair};
+
+//    if (straighFlush(p1) != straighFlush(p2)) return normal(straighFlush(p1) - straighFlush(p2));
+//    if (fourOfAKing(p1) != fourOfAKing(p2)) return normal(fourOfAKing(p1) - fourOfAKing(p2));
+//    if (fullHouse(p1) != fullHouse(p2)) return normal(fullHouse(p1) - fullHouse(p2));
+//    if (cardFlush(p1) != cardFlush(p2)) return normal(cardFlush(p1) - cardFlush(p2));
+//    if (straight(p1) != straight(p2)) return normal(straight(p1) - straight(p2));
+//    if (threeOfAKing(p1) != threeOfAKing(p2)) return normal(threeOfAKing(p1) - threeOfAKing(p2));
+//    if (twoPairs(p1) != twoPairs(p2)) return normal(twoPairs(p1) - twoPairs(p2));
+//    if (onePair(p1) != onePair(p2)) return normal(onePair(p1) - onePair(p2));
+
+     for (auto rule : f_compare) {
+         int v1 = rule(p1), v2 = rule(p2);
+         int res = normal(v1 - v2);
+         if (res != 0)
+             return res;
+         // if (v1 && v2)
+         //     return normal(v1 - v2);
+         // else {
+         //     if (v1 || v2)
+         //         return v1 ? 1 : -1;
+         //     else
+         //         continue;
+         // }
+     }
+    return compareHighCard(p1, p2);
+
 }
 
-Poker parse(string s) {
-    Poker result;
-    result.suite = s[1];
-    if (s[0] == 'T') result.value = 10;
-    else if (s[0] == 'J') result.value = 11;
-    else if (s[0] == 'Q') result.value = 12;
-    else if (s[0] == 'K') result.value = 13;
-    else if (s[0] == 'A') result.value = 14;
-    else result.value = s[0] - '0';
-    
-    return result;
-}
 
-int check(vector<Poker> v1, vector<Poker> v2) {
-    if (f8(v1, v2) != 0) return f8(v1, v2);
-    if (f7(v1, v2) != 0) return f7(v1, v2);
-    if (f6(v1, v2) != 0) return f6(v1, v2);
-    if (f5(v1, v2) != 0) return f5(v1, v2);
-    if (f4(v1, v2) != 0) return f4(v1, v2);
-    if (f3(v1, v2) != 0) return f3(v1, v2);
-    if (f2(v1, v2) != 0) return f2(v1, v2);
-    if (f1(v1, v2) != 0) return f1(v1, v2);
-    return maxPoker(v1, v2);
-}
+bool compare(card lhs, card rhs) { return lhs.value > rhs.value; }
 
 int main() {
-    string s;
-    
-    while (cin >> s) {
-        vector<Poker> v1, v2;
-        v1.push_back(parse(s));
-        
-        for (int i = 1; i <= 4; i++) {
-            cin >> s; v1.push_back(parse(s));
+    string line;
+    while (getline(std::cin, line)) {
+        if (DEBUG) cout << line << endl;
+        istringstream iss(line);
+
+        vector<card> person1, person2;
+        string temp;
+
+        if (DEBUG) cout << "Origin : ";
+        for (int i = 0; i < 5; ++i) {
+            iss >> temp;
+            person1.push_back(card(temp[0], temp[1]));
+            if (DEBUG) cout << person1[i].value << person1[i].suit << " ";
         }
-        
-        for (int i = 0; i <= 4; i++) {
-            cin >> s; v2.push_back(parse(s));
+        if (DEBUG) cout << endl << "Sorted : ";
+        sort(person1.begin(), person1.end(), compare);
+
+        for (int i = 0; i < 5; ++i)
+            if (DEBUG) cout << person1[i].value << person1[i].suit << " ";
+        if (DEBUG) cout << endl;
+
+        if (DEBUG) cout << "Origin : ";
+        for (int i = 0; i < 5; ++i) {
+            iss >> temp;
+            person2.push_back(card(temp[0], temp[1]));
+            if (DEBUG) cout << person2[i].value << person2[i].suit << " ";
         }
-        
-        sort(v1.begin(), v1.end());
-        sort(v2.begin(), v2.end());
-        
-        int r = check(v1, v2);
-        if (r == -1) cout << "Black wins." << endl;
-        else if (r == 1) cout << "White wins." << endl;
-        else cout << "Tie." << endl;
+        if (DEBUG) cout << endl << "Sorted : " ;
+        sort(person2.begin(), person2.end(), compare);
+
+        for (int i = 0; i < 5; ++i)
+            if (DEBUG) cout << person2[i].value << person2[i].suit << " ";
+        if (DEBUG) cout << endl ;
+
+
+        int res = elegantCompare(person1, person2);
+        if (res == 0)
+            cout << "Tie." << endl;
+        if (res == 1)
+            cout << "Black wins." << endl;
+        if (res == -1)
+            cout << "White wins." << endl;
+
+        if (DEBUG) cout << endl;
+
     }
-    
-    return 0;
 }
